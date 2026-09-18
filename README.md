@@ -30,7 +30,7 @@ gracefully and stays fully playable if any external API is unreachable.
 | Google Geocoding API | "Invasion by address" resolution | OSM Nominatim |
 | OpenStreetMap Overpass | Streets, buildings, parks, water → level geometry | Procedural demon-city |
 | Google Street View Static | "Memories of Earth" wall posters | Glitched hell posters |
-| Google Photorealistic 3D Tiles | *(diagnosed at runtime; offline in most demo keys)* | — |
+| Google Photorealistic 3D Tiles | Probed at runtime on the title screen; the status line reports whether the key is authorized | OSM + photo-scan geometry |
 
 Buildings become walls, roads become arena corridors, parks become blood-soaked combat
 pits, water becomes lava. A **hell fortress** with the sealed **EXIT PORTAL** is raised in
@@ -55,6 +55,8 @@ the middle of your real streets. Go find the red keycard.
 1. Explore the demonified location, find the **RED keycard**.
 2. Optional: blue & yellow key cards open loot chambers (super shotgun, soulsphere…).
 3. Kill through the red door, survive the **ARCHDEVIL**, and step into the **exit portal**.
+
+While you hunt: **biohazard barrels** are scattered everywhere (usually hanging out in little groups of 1–3) — shoot one and it chain-ignites its neighbors. Watch for the **BACKPACK** (doubles max ammo) and the **PARTIAL INVISIBILITY** sphere, and compare your clear time to the level's **PAR TIME** on the victory screen.
 
 ## 🧱 Architecture
 

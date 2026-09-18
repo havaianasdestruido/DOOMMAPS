@@ -2,7 +2,7 @@
 // DOOMMAPS — Menus: title, location select, settings, help,
 // pause, death, victory, loading (DOM-driven, DOM-free HUD)
 // ============================================================
-import { LANDMARKS, RANDOM_SPOTS, API, saveSettings, choice } from "../config.js";
+import { LANDMARKS, RANDOM_SPOTS, API, GOOGLE_API_KEY, saveSettings, choice } from "../config.js";
 import { AUDIO } from "../core/audio.js";
 import { INPUT } from "../core/input.js";
 
@@ -126,13 +126,18 @@ export class Menus {
         return r.ok || r.status === 403 || r.status === 400;
       } catch (e) { return false; }
     };
-    const [geo, over] = await Promise.all([
+    const [geo, over, tiles] = await Promise.all([
       fetch(API.GEOCODE("New York")).then(r => r.json()).then(j => j.status !== "REQUEST_DENIED").catch(() => null),
       fetch(API.OVERPASS[0] + "?status", { method: "GET" }).then(r => r.ok).catch(() => false),
+      fetch(`https://tile.googleapis.com/v1/3dtiles/root.json?key=${GOOGLE_API_KEY}`)
+        .then(r => r.ok ? "ok" : (r.status === 403 ? "noapi" : String(r.status))).catch(() => null),
     ]);
     const gTxt = geo === true ? "<b style=color:#7ae84b>MAPS API: ONLINE</b>" : geo === false ? "<b style=color:#ff8855>MAPS API: DENIED (fallback active)</b>" : "<b style=color:#ff8855>MAPS API: UNREACHABLE</b>";
     const oTxt = over ? "<b style=color:#7ae84b>STREET DATA: ONLINE</b>" : "<b style=color:#ff8855>STREET DATA: OFFLINE (procedural fallback)</b>";
-    el.innerHTML = gTxt + " &nbsp;·&nbsp; " + oTxt;
+    const tTxt = tiles === "ok" ? "<b style=color:#7ae84b>3D TILES: KEY AUTHORIZED</b>"
+      : tiles === "noapi" ? "<b style=color:#ff8855>3D TILES: KEY LACKS API (satellite/OSM geometry in use)</b>"
+      : "<b style=color:#ff8855>3D TILES: UNREACHABLE</b>";
+    el.innerHTML = gTxt + " &nbsp;·&nbsp; " + oTxt + "<br>" + tTxt;
   }
 
   // ================= LOCATION SELECT =================
