@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>DOOMMAPS — Knee-Deep in the Real World</title>
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🔥</text></svg>">
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.160.1/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.1/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="boot">
+  <div class="boot-inner">
+    <pre class="boot-logo">
+██████╗  ██████╗  ██████╗ ███╗   ███╗███╗   ███╗ █████╗ ██████╗ ███████╗
+██╔══██╗██╔═══██╗██╔═══██╗████╗ ████║████╗ ████║██╔══██╗██╔══██╗██╔════╝
+██║  ██║██║   ██║██║   ██║██╔████╔██║██╔████╔██║███████║██████╔╝███████╗
+██║  ██║██║   ██║██║   ██║██║╚██╔╝██║██║╚██╔╝██║██╔══██║██╔═══╝ ╚════██║
+██████╔╝╚██████╔╝╚██████╔╝██║ ╚═╝ ██║██║ ╚═╝ ██║██║  ██║██║     ███████║
+╚═════╝  ╚═════╝  ╚═════╝ ╚═╝     ╚═╝╚═╝     ╚═╝╚═╝  ╚═╝╚═╝     ╚══════╝</pre>
+    <div id="boot-status">SUMMONING DEMONIC FORCES<span class="boot-dots"></span></div>
+    <div class="boot-bar"><div id="boot-bar-fill"></div></div>
+    <div id="boot-log"></div>
+  </div>
+</div>
+
+<canvas id="game-canvas"></canvas>
+<canvas id="hud-canvas"></canvas>
+<canvas id="automap-canvas"></canvas>
+
+<div id="ui-overlay"></div>
+
+<div id="console-log" class="hidden"></div>
+
+<div id="damage-vignette"></div>
+<div id="flash-overlay"></div>
+<div id="pickup-flash"></div>
+<div id="invuln-overlay"></div>
+<div id="berserk-overlay"></div>
+
+<div id="crosshair" class="hidden"><span></span></div>
+
+<script>
+  // Error trap: surface runtime errors on-screen for debugging (F9 toggles full log)
+  window.__errorLog = [];
+  window.addEventListener('error', (e) => {
+    window.__errorLog.push((e.message || 'err') + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno);
+    const el = document.getElementById('console-log');
+    if (el) { el.textContent = window.__errorLog.slice(-8).join('\n'); el.classList.remove('hidden'); }
+  });
+  window.addEventListener('unhandledrejection', (e) => {
+    window.__errorLog.push('Promise: ' + (e.reason && (e.reason.message || e.reason)));
+    const el = document.getElementById('console-log');
+    if (el) { el.textContent = window.__errorLog.slice(-8).join('\n'); el.classList.remove('hidden'); }
+  });
+</script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
