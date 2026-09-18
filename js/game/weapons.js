@@ -178,13 +178,24 @@ function buildViewModels() {
   VIEWS.rocket = [rocketView(false), rocketView(true)];
   function rocketView(fire) {
     const { cv, ctx } = VC();
-    shade(ctx, 40, 22, 84, 40, "#3e4a3e", 4);            // tube
-    R(ctx, 40, 22, 84, 8, "#5c6a5c");
-    R(ctx, 118, 16, 14, 52, "#2a332a");                  // muzzle ring
-    R(ctx, 44, 62, 20, 20, "#241c14");                   // grip box
-    gunHand(ctx, 44, 72);
-    R(ctx, 84, 60, 30, 30, "#33261a");
-    if (fire) muzzleFlash(ctx, 130, 40, 1.5);
+    // looking down the bore of a shoulder launcher
+    shade(ctx, 30, 14, 26, 90, "#3e4a3e", 6);            // left shoulder
+    shade(ctx, 104, 14, 26, 90, "#3e4a3e", 6);           // right shoulder
+    shade(ctx, 56, 20, 48, 74, "#4a584a", 5);            // tube body
+    R(ctx, 56, 20, 48, 10, "#6a7a6a");                   // top rim highlight
+    // bore mouth
+    R(ctx, 62, 26, 36, 30, "#141a14");
+    R(ctx, 66, 30, 28, 22, "#090d09");
+    // rocket nose visible in the bore
+    R(ctx, 74, 34, 12, 13, "#8c2a1a");
+    R(ctx, 77, 32, 6, 4, "#d8d0c8");
+    // rails / sights
+    R(ctx, 58, 60, 10, 34, "#2a332a");
+    R(ctx, 92, 60, 10, 34, "#2a332a");
+    R(ctx, 58, 60, 44, 8, "#1c241c");
+    gunHand(ctx, 32, 60);
+    gunHand(ctx, 102, 60);
+    if (fire) muzzleFlash(ctx, 80, 40, 2.0);
     return cv;
   }
   // ---- PLASMA ----
@@ -335,6 +346,7 @@ export class Weapons {
 
     // sound
     const sndMap = { pistol: "pistol", shotgun: "shotgun", supershotgun: "superShotgun", chaingun: "chaingun", rocket: "rocketFire", plasma: "plasma" };
+    if (this.current === "chaingun" && this.spinHeat < 0.2) AUDIO.chainSpin();
     AUDIO[sndMap[this.current]]();
     if (d.pump) setTimeout(() => AUDIO.pump(), 320);
 
@@ -399,11 +411,18 @@ export class Weapons {
   firePellet(eye, dir, dmg) {
     const game = this.game;
     const maxDist = 200;
-    // enemy hit?
+    // candidates: enemy, barrel, wall — nearest wins
     const eh = game.enemies.raycast(eye.x, eye.y, eye.z, dir.x, dir.y, dir.z, maxDist);
-    // wall hit?
+    const bh = game.barrels.raycast(eye.x, eye.y, eye.z, dir.x, dir.y, dir.z, maxDist);
     const wh = game.level.raycastWall(eye.x, eye.z, dir.x, dir.z, maxDist);
-    if (eh && (!wh || eh.dist < wh.dist)) {
+    const wDist = wh ? wh.dist : Infinity;
+    const nearest = (eh && eh.dist < wDist && (!bh || eh.dist < bh.dist)) ? "enemy"
+      : (bh && bh.dist < wDist) ? "barrel"
+      : wh ? "wall" : null;
+
+    if (nearest === "barrel") {
+      game.barrels.damage(bh.barrel, dmg);
+    } else if (nearest === "enemy") {
       const e = eh.enemy;
       e.hurt(dmg, Math.atan2(dir.x, dir.z), game);
       game.effects.blood(
@@ -413,7 +432,7 @@ export class Weapons {
       if (e.hp <= 0 && (dmg > 45 || this.current === "supershotgun") && !e.def.boss) {
         game.effects.gibs(e.pos.x, e.pos.y, e.pos.z);
       }
-    } else if (wh) {
+    } else if (nearest === "wall") {
       game.effects.puff(wh.x + dir.x * 0.1, clamp(eye.y + dir.y * wh.dist, 0.3, 6), wh.z + dir.z * 0.1);
       AUDIO.ricochet();
     }

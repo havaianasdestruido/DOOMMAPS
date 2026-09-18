@@ -3,7 +3,7 @@
 // + AI (wake, chase, attack, pain, death), pack behavior
 // ============================================================
 import * as THREE from "three";
-import { clamp, rand, choice } from "../config.js";
+import { clamp, rand, randi, choice } from "../config.js";
 import { AUDIO } from "../core/audio.js";
 
 // ---------------- enemy stat table ----------------
@@ -404,6 +404,18 @@ export class Enemy {
     switch (this.state) {
       case "idle": {
         this.setFrame("idle");
+        // DOOM-authentic: idle monsters occasionally shuffle around
+        this.wanderT = (this.wanderT ?? rand(1, 5)) - dt;
+        if (this.wanderT <= 0) {
+          this.wanderT = rand(1.5, 5);
+          this.wanderAng = rand(0, Math.PI * 2);
+          this.wanderSteps = randi(2, 7);
+        }
+        if (this.wanderSteps > 0) {
+          this.wanderSteps -= dt * 3;
+          this.tryMove(game, Math.sin(this.wanderAng) * this.def.speed * 0.3 * dt,
+            Math.cos(this.wanderAng) * this.def.speed * 0.3 * dt);
+        }
         // wake check
         if (this.frameT > 0.4) {
           this.frameT = 0;

@@ -301,6 +301,30 @@ export function buildLevel(osm, opts) {
     secrets.push(p);
   }
 
+  // ---------- 6b. exploding barrels (DOOM tradition) ----------
+  const barrelSpawns = [];
+  {
+    let placed = 0;
+    for (let tries = 0; tries < 400 && placed < 34; tries++) {
+      const i = choice(floorCells);
+      if (i === undefined) break;
+      const wx = grid.toWorldX(i % n), wz = grid.toWorldZ((i / n) | 0);
+      if (Math.hypot(wx - spawn.x, wz - spawn.z) < 22) continue;
+      if (Math.hypot(wx - fortress.x, wz - fortress.z) < fortress.r + 8) continue;
+      if (barrelSpawns.some(b => Math.hypot(b.x - wx, b.z - wz) < 9)) continue;
+      // clusters of 1-3
+      const cluster = Math.random() < 0.4 ? 3 : Math.random() < 0.5 ? 2 : 1;
+      for (let c = 0; c < cluster && placed < 34; c++) {
+        const ox = wx + rand(-3, 3), oz = wz + rand(-3, 3);
+        const ci = grid.idx(grid.toCellX(ox), grid.toCellZ(oz));
+        if (!grid.inB(grid.toCellX(ox), grid.toCellZ(oz))) continue;
+        if (grid.type[ci] !== T_FLOOR || grid.floor[ci] === F_LAVA) continue;
+        barrelSpawns.push({ x: ox, z: oz });
+        placed++;
+      }
+    }
+  }
+
   // ---------- 7. enemy scatter ----------
   const dens = opts.density || 2;
   const quota = Math.floor(floorCells.length * 0.0016 * dens) + 20;
@@ -372,7 +396,7 @@ export function buildLevel(osm, opts) {
 
   return {
     grid, group, updaters, spawn, fortress, portal,
-    doors: doorList, items: itemSpawns, enemySpawns, secrets,
+    doors: doorList, items: itemSpawns, enemySpawns, secrets, barrels: barrelSpawns,
     posterSpots, buildingNames, roads: osm.roads, roadNames,
     n, cell, radius,
 

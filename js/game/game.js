@@ -11,6 +11,7 @@ import { EnemyManager } from "./enemies.js";
 import { Items } from "./items.js";
 import { Effects } from "./effects.js";
 import { Projectiles } from "./projectiles.js";
+import { Barrels } from "./barrels.js";
 import { Weapons } from "./weapons.js";
 import { HUD } from "./hud.js";
 import { FaceController } from "./face.js";
@@ -32,6 +33,7 @@ export class Game {
     this.items = new Items(this);
     this.effects = new Effects(engine);
     this.projectiles = new Projectiles(this);
+    this.barrels = new Barrels(this);
     this.weapons = new Weapons(this);
     this.hud = new HUD(document.getElementById("hud-canvas"), this);
     this.automap = new Automap(document.getElementById("automap-canvas"), this);
@@ -186,6 +188,9 @@ export class Game {
     // spawn actors
     this.enemies.spawnSet(this.level.enemySpawns);
     this.items.spawnSet(this.level.items);
+    this.barrels.spawnSet(this.level.barrels);
+    this._revealQueue = [];
+    this.automap.build();
 
     // sky flavor by hash
     this.engine.setSkyMode([0, 1, 2][Math.abs(hashCode(this.locationName)) % 3]);
@@ -230,6 +235,7 @@ export class Game {
     }
     this.enemies.dispose();
     this.items.dispose();
+    this.barrels.dispose();
     this.projectiles.dispose();
     this.effects.dispose();
   }
@@ -297,6 +303,7 @@ export class Game {
     this.enemies.update(dt);
     this.projectiles.update(dt);
     this.items.update(dt);
+    this.barrels.update(dt);
 
     // portal victory
     if (!this.player.dead) {
@@ -316,7 +323,12 @@ export class Game {
       for (let dz = -R; dz <= R; dz++) for (let dx = -R; dx <= R; dx++) {
         const ix = cix + dx, iz = ciz + dz;
         if (ix < 0 || iz < 0 || ix >= g.n || iz >= g.n) continue;
-        if (dx * dx + dz * dz <= R * R) this.revealed.add(g.idx(ix, iz));
+        if (dx * dx + dz * dz > R * R) continue;
+        const ci = g.idx(ix, iz);
+        if (!this.revealed.has(ci)) {
+          this.revealed.add(ci);
+          this._revealQueue.push(ci);
+        }
       }
     }
 

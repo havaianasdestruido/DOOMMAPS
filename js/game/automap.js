@@ -1,16 +1,22 @@
 // ============================================================
 // DOOMMAPS — Automap (TAB): DOOM-style line map of the real
-// geography; explored reveal, player arrow, keys & doors
+// geography. Cached static layer + fog-of-war erasure; only
+// actors are redrawn per frame.
 // ============================================================
 import { clamp } from "../config.js";
+
+const CPC = 3; // canvas px per grid cell
 
 export class Automap {
   constructor(canvas, game) {
     this.cv = canvas;
     this.ctx = canvas.getContext("2d");
     this.game = game;
-    this.zoom = 1;          // 0.4..4 multiplier over fit-to-screen
+    this.zoom = 1;
     this.followPlayer = true;
+    this.staticCv = null;
+    this.fogCv = null;
+    this.fogCtx = null;
     this.resize();
     window.addEventListener("resize", () => this.resize());
   }
@@ -19,102 +25,114 @@ export class Automap {
     this.cv.height = window.innerHeight;
   }
 
+  /** (Re)build the cached static layer for the current level. */
+  build() {
+    const g = this.game.level.grid;
+    const n = g.n;
+    this.staticCv = document.createElement("canvas");
+    this.staticCv.width = n * CPC; this.staticCv.height = n * CPC;
+    const ctx = this.staticCv.getContext("2d");
+    // floors
+    ctx.fillStyle = "#13131c";
+    ctx.fillRect(0, 0, n * CPC, n * CPC);
+    for (let iz = 0; iz < n; iz++) {
+      const row = iz * n;
+      for (let ix = 0; ix < n; ix++) {
+        const i = row + ix;
+        if (g.type[i] !== 0) continue;
+        if (g.floor[i] === 4) ctx.fillStyle = "#5a1404";
+        else if (g.floor[i] === 0) ctx.fillStyle = "#20202c"; // roads slightly lifted
+        else ctx.fillStyle = "#17171f";
+        ctx.fillRect(ix * CPC, iz * CPC, CPC, CPC);
+      }
+    }
+    // walls: white lines along wall/floor borders
+    ctx.strokeStyle = "#d8d8e0";
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    for (let iz = 0; iz < n; iz++) {
+      const row = iz * n;
+      for (let ix = 0; ix < n; ix++) {
+        const i = row + ix;
+        if (g.type[i] !== 1) continue;
+        const x = ix * CPC, y = iz * CPC;
+        if (ix > 0 && g.type[i - 1] === 0) { ctx.moveTo(x, y); ctx.lineTo(x, y + CPC); }
+        if (ix < n - 1 && g.type[i + 1] === 0) { ctx.moveTo(x + CPC, y); ctx.lineTo(x + CPC, y + CPC); }
+        if (iz > 0 && g.type[i - n] === 0) { ctx.moveTo(x, y); ctx.lineTo(x + CPC, y); }
+        if (iz < n - 1 && g.type[i + n] === 0) { ctx.moveTo(x, y + CPC); ctx.lineTo(x + CPC, y + CPC); }
+      }
+    }
+    ctx.stroke();
+
+    // fog layer: opaque black, erased incrementally as cells are revealed
+    this.fogCv = document.createElement("canvas");
+    this.fogCv.width = n * CPC; this.fogCv.height = n * CPC;
+    this.fogCtx = this.fogCv.getContext("2d");
+    this.fogCtx.fillStyle = "#0a0a12";
+    this.fogCtx.fillRect(0, 0, n * CPC, n * CPC);
+    this.fogCtx.globalCompositeOperation = "destination-out";
+  }
+
+  _consumeReveals() {
+    const game = this.game;
+    if (!this.fogCtx || !game._revealQueue || game._revealQueue.length === 0) return;
+    const g = game.level.grid;
+    for (const i of game._revealQueue) {
+      const ix = i % g.n, iz = (i / g.n) | 0;
+      this.fogCtx.fillRect(ix * CPC - 1, iz * CPC - 1, CPC + 2, CPC + 2);
+    }
+    game._revealQueue.length = 0;
+  }
+
   draw(dt) {
     const { ctx, cv } = this;
     const game = this.game;
     const level = game.level;
     ctx.clearRect(0, 0, cv.width, cv.height);
-    if (!level) return;
+    if (!level || !this.staticCv) return;
 
-    // bg
     ctx.fillStyle = "#0a0a12";
     ctx.fillRect(0, 0, cv.width, cv.height);
+
+    this._consumeReveals();
 
     const g = level.grid;
     const worldSize = g.n * g.cell;
     const fit = Math.min(cv.width, cv.height) / (worldSize * 1.06);
     const scale = fit * this.zoom;
+    const pxPerCell = scale * g.cell;
+    const pxPerMapPx = scale * g.cell / CPC; // screen px per static-canvas px
 
     const p = game.player;
-    // focus point
     const cx = this.followPlayer ? p.pos.x : 0;
     const cz = this.followPlayer ? p.pos.z : 0;
-    const toMap = (wx, wz) => [
-      cv.width / 2 + (wx - cx) * scale,
-      cv.height / 2 + (wz - cz) * scale,
-    ];
+    // world → screen
+    const W2S = (wx, wz) => [cv.width / 2 + (wx - cx) * scale, cv.height / 2 + (wz - cz) * scale];
 
-    const cellPx = g.cell * scale;
-    const revealed = game.revealed;
-    const revealAll = game.cheatMap || game.hasMap;
+    // top-left of static canvas in world coords
+    const wx0 = -worldSize / 2, wz0 = -worldSize / 2;
+    const [sx, sy] = W2S(wx0, wz0);
+    const dstW = this.staticCv.width * pxPerMapPx;
+    const dstH = this.staticCv.height * pxPerMapPx;
 
-    // floor areas (revealed) — dim, so walls pop
-    ctx.fillStyle = "#17171f";
-    for (let iz = 0; iz < g.n; iz++) {
-      const row = iz * g.n;
-      for (let ix = 0; ix < g.n; ix++) {
-        const i = row + ix;
-        if (g.type[i] !== 0) continue;
-        if (!revealAll && !revealed.has(i)) continue;
-        if (g.floor[i] === 4) continue; // lava drawn later
-        const [mx, my] = toMap(g.toWorldX(ix) - g.cell / 2, g.toWorldZ(iz) - g.cell / 2);
-        if (mx < -cellPx || my < -cellPx || mx > cv.width || my > cv.height) continue;
-        ctx.fillRect(mx, my, cellPx + 0.6, cellPx + 0.6);
-      }
-    }
-    // lava
-    ctx.fillStyle = "#5a1404";
-    for (let iz = 0; iz < g.n; iz++) {
-      const row = iz * g.n;
-      for (let ix = 0; ix < g.n; ix++) {
-        const i = row + ix;
-        if (g.type[i] !== 0 || g.floor[i] !== 4) continue;
-        if (!revealAll && !revealed.has(i)) continue;
-        const [mx, my] = toMap(g.toWorldX(ix) - g.cell / 2, g.toWorldZ(iz) - g.cell / 2);
-        ctx.fillRect(mx, my, cellPx + 0.6, cellPx + 0.6);
-      }
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(this.staticCv, sx, sy, dstW, dstH);
+    // fog unless full reveal
+    if (!(game.cheatMap || game.hasMap)) {
+      ctx.drawImage(this.fogCv, sx, sy, dstW, dstH);
     }
 
-    // walls — white lines on floor/wall borders
-    ctx.strokeStyle = "#d8d8e0";
-    ctx.lineWidth = Math.max(1, cellPx * 0.24);
-    ctx.beginPath();
-    for (let iz = 0; iz < g.n; iz++) {
-      const row = iz * g.n;
-      for (let ix = 0; ix < g.n; ix++) {
-        const i = row + ix;
-        if (g.type[i] !== 1) continue;
-        const wx0 = g.toWorldX(ix) - g.cell / 2, wz0 = g.toWorldZ(iz) - g.cell / 2;
-        const [mx, my] = toMap(wx0, wz0);
-        if (mx < -cellPx * 2 || my < -cellPx * 2 || mx > cv.width + cellPx || my > cv.height + cellPx) continue;
-        // check explored neighbor
-        const nb = [
-          [i - 1, ix > 0], [i + 1, ix < g.n - 1], [i - g.n, iz > 0], [i + g.n, iz < g.n - 1],
-        ];
-        let shown = false, sides = [0, 0, 0, 0];
-        for (let s = 0; s < 4; s++) {
-          if (nb[s][1] && g.type[nb[s][0]] === 0 && (revealAll || revealed.has(nb[s][0]))) {
-            shown = true; sides[s] = 1;
-          }
-        }
-        if (!shown) continue;
-        if (sides[0]) { ctx.moveTo(mx, my); ctx.lineTo(mx, my + cellPx); }
-        if (sides[1]) { ctx.moveTo(mx + cellPx, my); ctx.lineTo(mx + cellPx, my + cellPx); }
-        if (sides[2]) { ctx.moveTo(mx, my); ctx.lineTo(mx + cellPx, my); }
-        if (sides[3]) { ctx.moveTo(mx, my + cellPx); ctx.lineTo(mx + cellPx, my + cellPx); }
-      }
-    }
-    ctx.stroke();
+    const toMap = W2S;
+    const cellPx = pxPerCell;
 
     // doors — colored thick lines
     for (const d of level.doors) {
-      const [mx, my] = toMap(d.x, d.z);
       const tx = -Math.sin(d.angle), tz = Math.cos(d.angle);
       const L = g.cell * 1.1;
       const [ax, ay] = toMap(d.x + tx * L, d.z + tz * L);
       const [bx, by] = toMap(d.x - tx * L, d.z - tz * L);
       ctx.strokeStyle = d.state === "open" ? "#3a8c3a" : ({ red: "#e02838", blue: "#2868f0", yellow: "#f0c828" })[d.key];
-      ctx.lineWidth = Math.max(2, cellPx * 0.65);
+      ctx.lineWidth = Math.max(2, cellPx * 0.5);
       ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
     }
 
@@ -129,8 +147,14 @@ export class Automap {
     ctx.textAlign = "center";
     ctx.fillText("EXIT", px, py - Math.max(7, cellPx));
 
-    // keys + items when map powerup / cheat
+    // items when map powerup / cheat
     if (game.hasMap || game.cheatMap) {
+      for (const b of game.barrels.list) {
+        if (b.dead) continue;
+        const [bx, by] = toMap(b.x, b.z);
+        ctx.fillStyle = "#c08418";
+        ctx.beginPath(); ctx.arc(bx, by, 2.2, 0, 7); ctx.fill();
+      }
       for (const it of game.items.list) {
         if (it.def.cat === "key") {
           const [kx, ky] = toMap(it.x, it.z);
@@ -171,6 +195,7 @@ export class Automap {
     ctx.restore();
 
     // ---- legend / info ----
+    ctx.imageSmoothingEnabled = true;
     ctx.textAlign = "left";
     ctx.fillStyle = "#d8c887";
     ctx.font = "bold 15px monospace";
@@ -178,8 +203,8 @@ export class Automap {
     ctx.font = "11px monospace";
     ctx.fillStyle = "#8a7a5a";
     ctx.fillText(`LAT ${game.lat.toFixed(5)}  LNG ${game.lng.toFixed(5)}`, 16, 42);
-    if (game.level && game.level.roadNames.length) {
-      ctx.fillText("SECTORS: " + game.level.roadNames.slice(0, 5).join(" · "), 16, 58);
+    if (level.roadNames.length) {
+      ctx.fillText("SECTORS: " + level.roadNames.slice(0, 5).join(" · "), 16, 58);
     }
     ctx.textAlign = "right";
     ctx.fillStyle = "#8a7a5a";
@@ -187,7 +212,7 @@ export class Automap {
     ctx.fillText(`TIME ${fmtTime(game.levelTime)}`, cv.width - 16, 42);
     ctx.textAlign = "center";
     ctx.fillStyle = "#6b5b3a";
-    ctx.fillText("+/- ZOOM  ·  TAB CLOSE  ·  ARROW = YOU", cv.width / 2, cv.height - 14);
+    ctx.fillText("+/- ZOOM · F FOLLOW · TAB CLOSE", cv.width / 2, cv.height - 14);
   }
 }
 

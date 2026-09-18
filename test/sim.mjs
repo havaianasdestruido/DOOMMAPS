@@ -63,13 +63,20 @@ for (let i = 0; i < 600; i++) game.update(1 / 60);
 assert(true, "10s of AI updates without crash");
 
 console.log("== SHOOTING ==");
-// pick a target with LOS and shoot at it
-let target = null;
-for (const e of game.enemies.list) {
-  const d = e.pos.distanceTo(p.pos);
-  if (d < 60 && L.los(p.pos.x, p.pos.z, e.pos.x, e.pos.z)) { target = e; break; }
-}
+// deterministic: place a target in guaranteed-open space in front of the player
+let target = game.enemies.list.find(e => e.state !== "dying" && e.state !== "dead");
 assert(target, "found enemy with line of sight");
+{
+  // walk forward from player until a clear spot with LOS
+  let tx = p.pos.x, tz = p.pos.z, best = null;
+  for (let d = 10; d < 40; d += 4) {
+    const cx = p.pos.x - Math.sin(p.angle) * d * -1, cz = p.pos.z - Math.cos(p.angle) * d * -1;
+    if (!L.isSolid(cx, cz) && L.los(p.pos.x, p.pos.z, cx, cz)) { best = { x: cx, z: cz }; break; }
+  }
+  if (!best) best = { x: p.pos.x, z: p.pos.z };
+  target.pos.x = best.x; target.pos.z = best.z;
+  if (target.state === "dying") { target.state = "chase"; target.hp = 50; }
+}
 p.angle = Math.atan2(-(target.pos.x - p.pos.x), -(target.pos.z - p.pos.z));
 const hpBefore = target.hp;
 INPUT.fire = true;
@@ -128,6 +135,23 @@ p.health = 50;
 const med = game.items.list.find(i => i.type === "medikit");
 if (med) { p.pos.x = med.x; p.pos.z = med.z; game.update(1 / 60); assert(p.health === 75, "medikit healed +25"); }
 else { console.log("  (medikit gone, skipping heal check)"); }
+
+console.log("== BARRELS ==");
+assert(game.barrels.list.length > 8, "barrels scattered: " + game.barrels.list.length);
+// put two victims next to a barrel cluster: one enemy, then trigger chain
+{
+  const b = game.barrels.list[0];
+  const victim = game.enemies.list.find(e => e.state !== "dying");
+  victim.pos.x = b.x + 1; victim.pos.z = b.z + 1;
+  const hpV = victim.hp;
+  // a second barrel touching distance for chain test
+  const b2 = game.barrels.spawn(b.x + 2, b.z + 1);
+  game.barrels.damage(b, 50);
+  for (let i = 0; i < 60; i++) game.update(1 / 60);
+  assert(b.dead, "barrel exploded");
+  assert(b2.dead, "chain reaction detonated neighbor barrel");
+  assert(victim.hp < hpV || victim.state === "dying", `barrel blast hurt enemy (${hpV} → ${victim.hp})`);
+}
 
 console.log("== VICTORY ==");
 p.pos.x = L.portal.x; p.pos.z = L.portal.z;
