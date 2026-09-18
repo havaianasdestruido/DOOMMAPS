@@ -150,6 +150,7 @@ export class Projectiles {
     const { x, y, z } = pr.pos;
     if (pr.def.splash > 0) {
       game.effects.explosion(x, y, z, pr.def.splash);
+      game.effects.decal(x, z, pr.def.splash * 0.35);
       game.barrels.explodeNear(x, y, z, pr.def.splash * 1.1);
       const dP = Math.hypot(x - game.player.pos.x, z - game.player.pos.z);
       AUDIO.explosion(dP);

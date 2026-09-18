@@ -293,6 +293,8 @@ export function buildLevel(osm, opts) {
   scatter("berserk", 1, 70);
   scatter("invuln", 1, 90);
   scatter("radsuit", 2, 40);
+  scatter("backpack", 1, 50);
+  scatter("blursphere", 1, 80);
   // secrets: carve 1-cell alcoves with good loot
   for (let s = 0; s < 3; s++) {
     const p = randFloorFar(60);

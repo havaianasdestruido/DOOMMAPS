@@ -211,6 +211,7 @@ export class Game {
     this.deathScreenShown = false;
     this.notify(`SIEGE ZONE: ${this.locationName}`);
     this.announce("FIND THE EXIT PORTAL — IT'S SEALED", "#f7d84b", 3.2);
+    this.parTime = Math.round(this.settings.mapRadius * 1.5);
     INPUT.enabled = true;
     INPUT.cheatBuffer = "";
     INPUT.requestLock();

@@ -349,10 +349,12 @@ export class Menus {
     stats.className = "menu-hint";
     stats.style.fontSize = "16px";
     stats.style.color = "#e8d88a";
+    const par = this.game.parTime || 360;
+    const beat = this.game.levelTime <= par;
     stats.innerHTML =
       `☠ &nbsp;KILLS: <b style="color:#f7d84b">${this.game.player.kills} / ${this.game.enemies.totalSpawned}</b> (${killPct}%)<br>` +
       `⚿ &nbsp;SECRETS: <b style="color:#7ae84b">${this.game.player.secretsFound} / ${this.game.level.secrets.length}</b><br>` +
-      `⌛ &nbsp;TIME: <b style="color:#8ff8ff">${fmtTime(this.game.levelTime)}</b>`;
+      `⌛ &nbsp;TIME: <b style="color:#8ff8ff">${fmtTime(this.game.levelTime)}</b> &nbsp;PAR ${fmtTime(par)} &nbsp;<b style="color:${beat ? "#7ae84b" : "#ff8855"}">${beat ? "UNDER PAR — BRUTAL" : "OVER PAR"}</b>`;
     s.appendChild(stats);
 
     this._items(s, [

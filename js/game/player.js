@@ -62,6 +62,7 @@ export class Player {
     this.radT = 0; this.liteT = 0; this.invisT = 0;
     this.kills = 0; this.secretsFound = 0;
     this.painT = 0; this.recentDamage = 0;
+    this.hasBackpack = false;
   }
 
   get eyeY() { return this.pos.y; }

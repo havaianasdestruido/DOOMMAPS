@@ -28,6 +28,8 @@ const ICONS = {
   radsuit() { const { cv, ctx } = C(26, 28); rr(ctx, 7, 3, 12, 10, "#c8b028"); rr(ctx, 9, 6, 8, 4, "#282018"); rr(ctx, 6, 12, 14, 12, "#a89020"); rr(ctx, 5, 24, 6, 4, "#88701a"); rr(ctx, 15, 24, 6, 4, "#88701a"); return cv; },
   liteamp() { const { cv, ctx } = C(26, 16); rr(ctx, 2, 4, 22, 8, "#2c2c34"); rr(ctx, 4, 6, 8, 5, "#50ff90"); rr(ctx, 14, 6, 8, 5, "#50ff90"); rr(ctx, 12, 7, 2, 3, "#1c1c24"); return cv; },
   map() { const { cv, ctx } = C(26, 20); rr(ctx, 2, 3, 22, 14, "#c8b890"); rr(ctx, 4, 5, 8, 3, "#8c7a5c"); rr(ctx, 14, 6, 8, 2, "#8c7a5c"); rr(ctx, 4, 10, 18, 1, "#8c7a5c"); rr(ctx, 4, 13, 8, 2, "#8c7a5c"); return cv; },
+  backpack() { const { cv, ctx } = C(26, 26); rr(ctx, 5, 6, 16, 18, "#6b4a20"); rr(ctx, 7, 2, 12, 6, "#7a5626"); rr(ctx, 5, 12, 16, 3, "#543a18"); rr(ctx, 8, 8, 10, 8, "#8c662e"); rr(ctx, 10, 10, 6, 4, "#a87c3a"); rr(ctx, 4, 22, 18, 2, "#44301480"); return cv; },
+  blursphere() { const { cv, ctx } = C(28, 28); const g = ctx.createRadialGradient(14, 14, 2, 14, 14, 13); g.addColorStop(0, "#f0f0ff"); g.addColorStop(0.4, "#8888cc"); g.addColorStop(1, "rgba(20,20,60,0)"); ctx.fillStyle = g; ctx.beginPath(); ctx.arc(14, 14, 13, 0, 7); ctx.fill(); for (let i = 0; i < 5; i++) { ctx.fillStyle = "rgba(255,255,255,0.5)"; ctx.fillRect(8 + i * 3, 8 + (i % 2) * 8, 1, 1); } return cv; },
   key_red() { return keycard("#e82838"); },
   key_blue() { return keycard("#2868f0"); },
   key_yellow() { return keycard("#f0c828"); },
@@ -69,6 +71,8 @@ export const ITEM_DEFS = {
   radsuit: { w: 0.7, h: 0.75, bob: 0.14, msg: "Radiation shielding suit", cat: "power", pickup: (g) => { g.player.radT = 60; return true; }, sound: "powerup" },
   liteamp: { w: 0.7, h: 0.4, bob: 0.14, msg: "Light amplification visor", cat: "power", pickup: (g) => { g.player.liteT = 120; return true; }, sound: "powerup" },
   map: { w: 0.7, h: 0.5, bob: 0.14, msg: "Computer area map!", cat: "power", pickup: (g) => { g.hasMap = true; return true; }, sound: "powerup" },
+  backpack: { w: 0.7, h: 0.7, bob: 0.14, msg: "BACKPACK! Max ammo doubled", cat: "power", pickup: (g) => { const p = g.player; if (p.hasBackpack) return p.giveAmmo("bullets", 10); p.hasBackpack = true; for (const k of Object.keys(p.maxAmmo)) p.maxAmmo[k] *= 2; p.giveAmmo("bullets", 10); p.giveAmmo("shells", 4); p.giveAmmo("rockets", 1); p.giveAmmo("cells", 20); return true; }, sound: "weaponPickup" },
+  blursphere: { w: 0.8, h: 0.8, bob: 0.3, msg: "PARTIAL INVISIBILITY!", cat: "power", pickup: (g) => { g.player.invisT = 45; return true; }, sound: "powerup" },
   key_red: { w: 0.5, h: 0.62, bob: 0.3, msg: "You pick up a RED keycard", cat: "key", pickup: (g) => { g.player.keys.add("red"); return true; }, sound: "keyPickup" },
   key_blue: { w: 0.5, h: 0.62, bob: 0.3, msg: "You pick up a BLUE keycard", cat: "key", pickup: (g) => { g.player.keys.add("blue"); return true; }, sound: "keyPickup" },
   key_yellow: { w: 0.5, h: 0.62, bob: 0.3, msg: "You pick up a YELLOW keycard", cat: "key", pickup: (g) => { g.player.keys.add("yellow"); return true; }, sound: "keyPickup" },
@@ -148,7 +152,7 @@ class Item {
     }
   }
 }
-function itemIsPower(t) { return ["soulsphere", "invuln", "berserk"].includes(t); }
+function itemIsPower(t) { return ["soulsphere", "invuln", "berserk", "blursphere"].includes(t); }
 
 export class Items {
   constructor(game) {
