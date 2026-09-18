@@ -80,6 +80,14 @@ export class Game {
             this.notify(["HUD: FULL", "HUD: STATUS BAR", "HUD: MINIMAL", "HUD: OFF"][this.settings.hudMode]);
             break;
           case "automap": this.toggleAutomap(); break;
+          case "console": {
+            const el = document.getElementById("console-log");
+            el.classList.toggle("hidden");
+            if (!el.classList.contains("hidden")) {
+              el.textContent = (window.__errorLog.length ? window.__errorLog.slice(-10) : ["— console —", "cheats: IDDQD · IDKFA · IDCLIP · IDDT · IDBEHOLD · IDGPS"]).join("\n");
+            }
+            break;
+          }
           case "use": this.tryUse(); break;
           case "screenshot": this.screenshot(); break;
           case "toggleMusic": AUDIO.setMusic(AUDIO.musicMode === "off" ? "explore" : "off"); break;

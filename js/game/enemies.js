@@ -267,6 +267,7 @@ function drawEnemy(type, pose) {
 
 // build texture set per enemy type
 const TEXSETS = {};
+export const __test = { drawEnemy };
 function getTexSet(type) {
   if (TEXSETS[type]) return TEXSETS[type];
   const mk = (pose) => {

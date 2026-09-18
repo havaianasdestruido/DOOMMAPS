@@ -88,6 +88,7 @@ function gunHand(ctx, x, y, skinTone = "#c89878") {
 }
 
 const VIEWS = {};
+export function __buildViews() { buildViewModels(); return VIEWS; }
 
 function buildViewModels() {
   // ---- FIST ----

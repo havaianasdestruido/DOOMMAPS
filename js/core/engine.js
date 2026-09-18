@@ -146,9 +146,9 @@ export class Engine {
     this.camera.rotation.order = "YXZ";
 
     // lights
-    this.hemi = new THREE.HemisphereLight(0xff9955, 0x201008, 0.85);
+    this.hemi = new THREE.HemisphereLight(0xffa060, 0x281410, 1.05);
     this.scene.add(this.hemi);
-    this.sun = new THREE.DirectionalLight(0xff7733, 0.55);
+    this.sun = new THREE.DirectionalLight(0xff7733, 0.7);
     this.sun.position.set(0.4, 1, -0.6);
     this.scene.add(this.sun);
 

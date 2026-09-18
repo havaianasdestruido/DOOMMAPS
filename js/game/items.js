@@ -54,6 +54,7 @@ function gunIcon(color, len = 3, wide = false) {
   return cv;
 }
 
+export const __ICONS = ICONS;
 // ---------------- item definitions ----------------
 export const ITEM_DEFS = {
   stimpack: { w: 0.55, h: 0.42, bob: 0.12, msg: "Picked up a stimpack.", cat: "health", pickup: (g) => g.player.heal(10) },

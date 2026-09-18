@@ -127,7 +127,7 @@ export class Effects {
     // quick muzzle flash at source
     const p = this._p("flash");
     p.start(from.x, from.y + 0.9, from.z, 0, 0, 0, 0.09, 0.75, 0);
-    this.pools["flash"][this.pools["flash"].indexOf(p)].sprite.material.opacity = 1;
+    p.sprite.material.opacity = 1;
   }
 
   explosion(x, y, z, r = 6) {
